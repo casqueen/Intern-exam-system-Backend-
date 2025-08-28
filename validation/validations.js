@@ -1,4 +1,5 @@
 const Joi = require("joi");
+
 // **Validation Middleware**
 const validateRequest = (schema) => {
   return (req, res, next) => {
@@ -8,20 +9,23 @@ const validateRequest = (schema) => {
         acc[curr.path.join(".")] = curr.message;
         return acc;
       }, {});
-      return res.status(400).json({ errors: formattedErrors });
+      return res.status(400).json({ error: "Validation failed", details: formattedErrors });
     }
     next();
   };
 };
+
+
 // **Optimized Password Validation**
 const passwordValidation = Joi.string()
   .required()
-  .messages({ "any.required": "Password is required" })
   .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/, "password")
   .messages({
     "string.pattern.name":
       "Password must be at least 8 characters long and include at least one lowercase letter, one uppercase letter, one number, and one special character (@$!%*?&).",
   });
+
+
 // **Register Schema**
 const registerSchema = Joi.object({
   name: Joi.string().required().messages({
@@ -33,12 +37,13 @@ const registerSchema = Joi.object({
     "any.required": "Email is required",
   }),
   password: passwordValidation,
-  // UPDATED: Made role required and validated against valid values (previously optional)
   role: Joi.string().required().valid("admin", "student").messages({
     "any.required": "Role is required",
     "string.valid": "Invalid role. Must be 'admin' or 'student'",
   }),
 });
+
+
 // **Login Schema**
 const loginSchema = Joi.object({
   email: Joi.string().email().required().messages({
@@ -46,12 +51,53 @@ const loginSchema = Joi.object({
     "any.required": "Email is required",
   }),
   password: passwordValidation,
-  // UPDATED: Added role to login schema as required
   role: Joi.string().required().valid("admin", "student").messages({
     "any.required": "Role is required",
     "string.valid": "Invalid role. Must be 'admin' or 'student'",
   }),
 });
+
+
+// **Create/Update Exam Schema** (UPDATED: Added for exam validation)
+const createExamSchema = Joi.object({
+  title: Joi.string().required().messages({
+    "any.required": "Exam title is required",
+  }),
+  questions: Joi.array()
+    .min(1)
+    .items(
+      Joi.object({
+        question: Joi.string().required().messages({
+          "any.required": "Question is required",
+        }),
+        options: Joi.array()
+          .min(2)
+          .items(Joi.string().required())
+          .messages({
+            "array.min": "At least two options are required",
+            "string.empty": "Option cannot be empty",
+          }),
+        correctAnswer: Joi.string()
+          .required()
+          .custom((value, helpers) => {
+            const options = helpers.state.ancestors[0].options;
+            if (!options.includes(value)) {
+              return helpers.error("any.invalid");
+            }
+            return value;
+          })
+          .messages({
+            "any.required": "Correct answer is required",
+            "any.invalid": "Correct answer must be one of the provided options",
+          }),
+      })
+    )
+    .messages({
+      "array.min": "At least one question is required",
+    }),
+});
+
+
 // update student
 const updateStudentSchema = Joi.object({
   name: Joi.string().optional().messages({
@@ -61,9 +107,19 @@ const updateStudentSchema = Joi.object({
     "string.email": "Invalid email format",
   }),
 });
+
+
 // **Validation Middleware Functions**
 const registerValidation = validateRequest(registerSchema);
 const loginValidation = validateRequest(loginSchema);
 const updateStudentValidation = validateRequest(updateStudentSchema);
+const createExamValidation = validateRequest(createExamSchema); //  Added exam validation
+
+
 // **Export Validations**
-module.exports = { registerValidation, loginValidation, updateStudentValidation };
+module.exports = {
+  registerValidation,
+  loginValidation,
+  updateStudentValidation,
+  createExamValidation,
+};
