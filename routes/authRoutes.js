@@ -7,11 +7,14 @@ const {
   loginValidation,
 } = require("../validation/validations");
 const router = express.Router();
+
+
 // Register Student (Admin or Student)
 router.post("/register", registerValidation, async (req, res) => {
   try {
     let { name, email, password, role } = req.body;
-    // UPDATED: Removed default role assignment (now required via validation)
+
+    //  Removed default role assignment (now required via validation)
     if (role === "admin") {
       const adminExists = await Student.findOne({ role: "admin" });
       if (adminExists) {
@@ -40,19 +43,28 @@ router.post("/register", registerValidation, async (req, res) => {
     res.status(500).json({ error: error });
   }
 });
+
+
 // Login
 router.post("/login", loginValidation, async (req, res) => {
-  // UPDATED: Added role to destructuring and query
+
+
+  // Added role to destructuring and query
   const { email, password, role } = req.body;
   const student = await Student.findOne({ email, role }).select('-__v -updatedAt');
-  if (!student) return res.status(400).json({ error: "Invalid email or role" });
+  if (!student) 
+    return res.status(400).json({ error: "Invalid email or role" });
   const isMatch = await bcrypt.compare(password, student.password);
-  if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
+  if (!isMatch) 
+    return res.status(400).json({ error: "Invalid credentials" });
   const token = jwt.sign(
     { id: student._id, role: student.role },
     process.env.JWT_SECRET,
     { expiresIn: "1d" }
   );
+
   res.json({ token, student });
 });
+
+
 module.exports = router;
