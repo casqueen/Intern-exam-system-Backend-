@@ -23,7 +23,7 @@ app.use(
 
 app.use(
   cors({
-    origin: "http://localhost:3001",
+    origin: "http://localhost:3000",
     methods: "GET,POST,PUT,DELETE",
     credentials: true,
   })
@@ -45,5 +45,5 @@ app.use("/api/v1/admin", adminRoutes);
 app.use("/api/v1/exams", examRoutes);
 app.use("/api/v1/student", studentRoutes);
 
-const PORT = process.env.PORT || 6000;
+const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
