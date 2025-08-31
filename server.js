@@ -58,47 +58,27 @@ const questionRoutes = require("./routes/questionRoutes");
 const compression = require("compression");
 const rateLimit = require("express-rate-limit");
 const cors = require("cors");
-const multer = require("multer");
-const path = require("path");
 
 connectDB();
+
 const app = express();
-
-// Multer configuration for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/"),
-  filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`),
-});
-const upload = multer({ storage });
-
 app.use(compression());
 app.use(
   rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
+    windowMs: 15 * 60 * 1000,
     max: 100,
     message: { error: "Too many requests, please try again later." },
   })
 );
 app.use(
   cors({
-    origin: "http://localhost:3001",
+    origin: "http://localhost:3000",
     methods: "GET,POST,PUT,DELETE",
     credentials: true,
   })
 );
 app.use(express.json());
 
-// Serve uploaded images
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
-// Routes
-app.use("/api/v1/auth", authRoutes);
-app.use("/api/v1/admin", adminRoutes);
-app.use("/api/v1/exams", examRoutes);
-app.use("/api/v1/student", studentRoutes);
-app.use("/api/v1/questions", questionRoutes);
-
-// Centralized error handling
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(err.status || 500).json({
@@ -107,5 +87,11 @@ app.use((err, req, res, next) => {
   });
 });
 
-const PORT = process.env.PORT || 8082;
+app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/admin", adminRoutes);
+app.use("/api/v1/exams", examRoutes);
+app.use("/api/v1/student", studentRoutes);
+app.use("/api/v1/questions", questionRoutes);
+
+const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

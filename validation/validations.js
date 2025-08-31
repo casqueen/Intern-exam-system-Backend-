@@ -124,145 +124,75 @@
 //   createExamValidation,
 // };
 
-
-
-
 const Joi = require("joi");
 
-/**
- * Validation Middleware
- * @description Validates request body against a Joi schema
- */
-const validateRequest = (schema) => {
-  return (req, res, next) => {
-    const { error } = schema.validate(req.body, { abortEarly: false });
-    if (error) {
-      const formattedErrors = error.details.reduce((acc, curr) => {
-        acc[curr.path.join(".")] = curr.message;
-        return acc;
-      }, {});
-      return res.status(400).json({ error: "Validation failed", details: formattedErrors });
-    }
-    next();
-  };
+const validateRequest = (schema) => (req, res, next) => {
+  const { error } = schema.validate(req.body, { abortEarly: false });
+  if (error) {
+    const formattedErrors = error.details.reduce((acc, curr) => {
+      acc[curr.path.join(".")] = curr.message;
+      return acc;
+    }, {});
+    return res.status(400).json({ error: "Validation failed", details: formattedErrors });
+  }
+  next();
 };
 
-/**
- * Password Validation
- * @description Ensures password meets complexity requirements
- */
 const passwordValidation = Joi.string()
   .required()
   .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/)
   .messages({
     "string.pattern.base":
-      "Password must be at least 8 characters long and include one lowercase, one uppercase, one number, and one special character (@$!%*?&).",
+      "Password must be at least 8 characters long and include at least one lowercase letter, one uppercase letter, one number, and one special character (@$!%*?&).",
   });
 
-/**
- * Register Schema
- */
 const registerSchema = Joi.object({
-  name: Joi.string().required().messages({ "any.required": "Name is required" }),
-  email: Joi.string().email().required().messages({ "string.email": "Invalid email format" }),
+  name: Joi.string().required(),
+  email: Joi.string().email().required(),
   password: passwordValidation,
-  role: Joi.string().required().valid("admin", "student").messages({
-    "any.required": "Role is required",
-    "string.valid": "Invalid role. Must be 'admin' or 'student'",
-  }),
 });
 
-/**
- * Login Schema
- */
 const loginSchema = Joi.object({
-  email: Joi.string().email().required().messages({ "string.email": "Invalid email format" }),
+  email: Joi.string().email().required(),
   password: passwordValidation,
-  role: Joi.string().required().valid("admin", "student").messages({
-    "any.required": "Role is required",
-    "string.valid": "Invalid role. Must be 'admin' or 'student'",
-  }),
 });
 
-/**
- * Question Schema
- */
-const questionSchema = Joi.object({
-  type: Joi.string()
-    .required()
-    .valid("mcq-single", "mcq-multiple", "true-false", "fill-blank", "short-answer", "matching")
-    .messages({ "any.required": "Question type is required" }),
-  text: Joi.string().required().messages({ "any.required": "Question text is required" }),
-  options: Joi.when("type", {
-    is: Joi.string().valid("mcq-single", "mcq-multiple", "true-false"),
-    then: Joi.array().min(2).items(Joi.string().required()).required(),
-    otherwise: Joi.array().optional(),
-  }).messages({ "array.min": "At least two options required for MCQ/True-False" }),
-  correctAnswers: Joi.when("type", {
-    is: Joi.string().valid("mcq-single", "mcq-multiple", "true-false"),
-    then: Joi.array().items(Joi.string().required()).min(1).required(),
-    otherwise: Joi.array().optional(),
-  }).messages({ "array.min": "At least one correct answer required" }),
-  blankAnswer: Joi.when("type", {
-    is: "fill-blank",
-    then: Joi.string().required(),
-    otherwise: Joi.string().optional(),
-  }).messages({ "any.required": "Blank answer required for fill-in-the-blank" }),
-  keywords: Joi.when("type", {
-    is: "short-answer",
-    then: Joi.array().items(Joi.string().required()).min(1).required(),
-    otherwise: Joi.array().optional(),
-  }).messages({ "array.min": "At least one keyword required for short answer" }),
-  matchingLeft: Joi.when("type", {
-    is: "matching",
-    then: Joi.array().items(Joi.string().required()).min(1).required(),
-    otherwise: Joi.array().optional(),
-  }).messages({ "array.min": "At least one left item required for matching" }),
-  matchingRight: Joi.when("type", {
-    is: "matching",
-    then: Joi.array().items(Joi.string().required()).min(1).required(),
-    otherwise: Joi.array().optional(),
-  }).messages({ "array.min": "At least one right item required for matching" }),
-  correctMatches: Joi.when("type", {
-    is: "matching",
-    then: Joi.array()
-      .items(Joi.object({ left: Joi.string().required(), right: Joi.string().required() }))
-      .min(1)
-      .required(),
-    otherwise: Joi.array().optional(),
-  }).messages({ "array.min": "At least one correct match required" }),
-  points: Joi.number().min(1).default(1),
-});
-
-/**
- * Create/Update Exam Schema
- */
-const createExamSchema = Joi.object({
-  title: Joi.string().required().messages({ "any.required": "Exam title is required" }),
-  questionIds: Joi.array().items(Joi.string().required()).min(1).required().messages({
-    "array.min": "At least one question is required",
-  }),
-});
-
-/**
- * Update Student Schema
- */
 const updateStudentSchema = Joi.object({
-  name: Joi.string().optional().messages({ "string.empty": "Name is optional" }),
-  email: Joi.string().email().optional().messages({ "string.email": "Invalid email format" }),
+  name: Joi.string().optional(),
+  email: Joi.string().email().optional(),
 });
 
-// Validation Middleware Functions
-const registerValidation = validateRequest(registerSchema);
-const loginValidation = validateRequest(loginSchema);
-const createQuestionValidation = validateRequest(questionSchema);
-const createExamValidation = validateRequest(createExamSchema);
-const updateStudentValidation = validateRequest(updateStudentSchema);
+const createExamSchema = Joi.object({
+  title: Joi.string().required(),
+  questionIds: Joi.array().items(Joi.string().required()).min(1).required(),
+});
+
+const createQuestionSchema = Joi.object({
+  type: Joi.string().valid("single", "multiple").required(),
+  question: Joi.string().required(),
+  options: Joi.array().items(Joi.string().required()).min(2).required(),
+  correctAnswers: Joi.array().items(Joi.string().required()).min(1).required()
+    .custom((value, helpers) => {
+      const options = helpers.state.ancestors[0].options;
+      if (!value.every((v) => options.includes(v))) {
+        return helpers.error("any.invalid");
+      }
+      const type = helpers.state.ancestors[0].type;
+      if (type === "single" && value.length !== 1) {
+        return helpers.error("array.length");
+      }
+      return value;
+    })
+    .messages({
+      "any.invalid": "Correct answers must be from the provided options",
+      "array.length": "Single choice questions must have exactly one correct answer",
+    }),
+});
 
 module.exports = {
-  registerValidation,
-  loginValidation,
-  createQuestionValidation,
-  createExamValidation,
-  updateStudentValidation,
+  registerValidation: validateRequest(registerSchema),
+  loginValidation: validateRequest(loginSchema),
+  updateStudentValidation: validateRequest(updateStudentSchema),
+  createExamValidation: validateRequest(createExamSchema),
+  createQuestionValidation: validateRequest(createQuestionSchema),
 };
