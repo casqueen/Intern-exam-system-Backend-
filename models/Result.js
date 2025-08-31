@@ -27,29 +27,36 @@
 // module.exports = mongoose.model("Result", ResultSchema);
 
 const mongoose = require("mongoose");
-const { Schema } = mongoose;
 
-/**
- * Result Schema
- * @description Stores exam results with flexible answer formats and per-question scoring
- */
 const ResultSchema = new mongoose.Schema(
   {
-    studentId: { type: Schema.Types.ObjectId, ref: "Student", required: true },
-    examId: { type: Schema.Types.ObjectId, ref: "Exam", required: true },
+    studentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Student",
+      required: true,
+    },
+    examId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Exam",
+      required: true,
+    },
     answers: [
       {
-        questionId: { type: Schema.Types.ObjectId, ref: "Question", required: true },
-        selected: Schema.Types.Mixed, // String, [String], or [{left, right}] for matching
+        questionId: { type: mongoose.Schema.Types.ObjectId, required: true },
+        selectedOptions: [{ type: String, required: true }],
         isCorrect: { type: Boolean, required: true },
-        score: { type: Number, required: true },
       },
     ],
-    totalScore: { type: Number, required: true },
+    score: { type: Number, required: true },
     passed: { type: Boolean, required: true },
     isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
+
+ResultSchema.pre(/^find/, function (next) {
+  this.find({ isDeleted: { $ne: true } });
+  next();
+});
 
 module.exports = mongoose.model("Result", ResultSchema);

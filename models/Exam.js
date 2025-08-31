@@ -18,30 +18,19 @@
 
 
 const mongoose = require("mongoose");
-const { Schema } = mongoose;
 
-/**
- * Exam Schema
- * @description Defines the schema for an exam, referencing questions, with soft delete and version history
- */
 const ExamSchema = new mongoose.Schema(
   {
-    title: { type: String, required: true },
-    questions: [{ type: Schema.Types.ObjectId, ref: "Question" }],
+    title: { type: String, required: true, index: true },
+    questions: [{ type: mongoose.Schema.Types.ObjectId, ref: "Question" }],
     isDeleted: { type: Boolean, default: false },
-    createdBy: { type: Schema.Types.ObjectId, ref: "Student" },
-    updatedBy: { type: Schema.Types.ObjectId, ref: "Student" },
-    versions: [
-      {
-        date: { type: Date, default: Date.now },
-        changes: Schema.Types.Mixed,
-      },
-    ],
   },
   { timestamps: true }
 );
 
-// Text index for faster search on title
-ExamSchema.index({ title: "text" });
+ExamSchema.pre(/^find/, function (next) {
+  this.find({ isDeleted: { $ne: true } });
+  next();
+});
 
 module.exports = mongoose.model("Exam", ExamSchema);
