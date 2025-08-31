@@ -111,138 +111,113 @@
 // module.exports = router;
 
 
-
 const express = require("express");
 const Exam = require("../models/Exam");
 const Question = require("../models/Question");
-const nodemailer = require("nodemailer");
+const AuditLog = require("../models/AuditLog");
+const transporter = require("../config/mail");
 const { authenticateUser, authorizeAdmin } = require("../middleware/authMiddleware");
 const { createExamValidation } = require("../validation/validations");
+
 const router = express.Router();
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
-
-/**
- * @route POST /api/v1/exams
- * @desc Create a new exam
- * @access Admin
- */
+// Create Exam
 router.post("/", authenticateUser, authorizeAdmin, createExamValidation, async (req, res) => {
   try {
     const { title, questionIds } = req.body;
-    const questions = await Question.find({ _id: { $in: questionIds }, isDeleted: false });
-    if (questions.length !== questionIds.length) {
-      return res.status(400).json({ error: "Some questions are invalid or deleted" });
-    }
-    const exam = new Exam({
-      title,
-      questions: questionIds,
-      createdBy: req.student.id,
-      updatedBy: req.student.id,
-    });
+    const questions = await Question.find({ _id: { $in: questionIds } });
+    if (questions.length !== questionIds.length) return res.status(400).json({ error: "Invalid question IDs" });
+    const exam = new Exam({ title, questions: questionIds });
     await exam.save();
-    await transporter.sendMail({
+    const log = new AuditLog({
+      action: "create",
+      model: "Exam",
+      documentId: exam._id,
+      changes: req.body,
+      userId: req.student.id,
+    });
+    await log.save();
+    // Email notification
+    transporter.sendMail({
+      from: process.env.MAIL_USER,
       to: process.env.ADMIN_EMAIL,
       subject: `New Exam Created: ${title}`,
-      html: `<p>Exam "${title}" has been created with ${questionIds.length} questions.</p>`,
+      text: `A new exam "${title}" has been created.`,
     });
     res.status(201).json({ message: "Exam created successfully", exam });
   } catch (error) {
-    res.status(500).json({ error: "Failed to create exam: " + error.message });
+    throw new Error("Failed to create exam: " + error.message);
   }
 });
 
-/**
- * @route GET /api/v1/exams
- * @desc Get all exams with pagination and search
- * @access Authenticated
- */
-router.get("/", authenticateUser, async (req, res) => {
+// Get All Exams (public for students)
+router.get("/", async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = "" } = req.query;
-    const query = { isDeleted: false };
-    if (search) query.$text = { $search: search };
+    const { search = "", page = 1, limit = 10 } = req.query;
+    const query = { title: { $regex: search, $options: "i" } };
     const exams = await Exam.find(query)
-      .populate("questions")
+      .populate("questions", "question type")
       .skip((page - 1) * limit)
-      .limit(parseInt(limit))
-      .select("_id title createdAt questions");
+      .limit(parseInt(limit));
     const total = await Exam.countDocuments(query);
     res.json({ exams, pagination: { page: parseInt(page), limit: parseInt(limit), total } });
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch exams: " + error.message });
+    throw new Error("Failed to fetch exams: " + error.message);
   }
 });
 
-/**
- * @route GET /api/v1/exams/:id
- * @desc Get a single exam
- * @access Authenticated
- */
-router.get("/:id", authenticateUser, async (req, res) => {
+// Get Single Exam (public)
+router.get("/:id", async (req, res) => {
   try {
     const exam = await Exam.findById(req.params.id).populate("questions");
-    if (!exam || exam.isDeleted) {
-      return res.status(404).json({ error: "Exam not found" });
-    }
+    if (!exam) return res.status(404).json({ error: "Exam not found" });
     res.json(exam);
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch exam: " + error.message });
+    throw new Error("Failed to fetch exam: " + error.message);
   }
 });
 
-/**
- * @route PUT /api/v1/exams/:id
- * @desc Update an exam
- * @access Admin
- */
+// Update Exam
 router.put("/:id", authenticateUser, authorizeAdmin, createExamValidation, async (req, res) => {
   try {
     const { title, questionIds } = req.body;
-    const exam = await Exam.findById(req.params.id);
-    if (!exam || exam.isDeleted) {
-      return res.status(404).json({ error: "Exam not found" });
-    }
-    const questions = await Question.find({ _id: { $in: questionIds }, isDeleted: false });
-    if (questions.length !== questionIds.length) {
-      return res.status(400).json({ error: "Some questions are invalid or deleted" });
-    }
-    exam.versions.push({ date: new Date(), changes: exam.toObject() });
-    const updatedExam = await Exam.findByIdAndUpdate(
+    const questions = await Question.find({ _id: { $in: questionIds } });
+    if (questions.length !== questionIds.length) return res.status(400).json({ error: "Invalid question IDs" });
+    const exam = await Exam.findByIdAndUpdate(
       req.params.id,
-      { title, questions: questionIds, updatedBy: req.student.id },
+      { title, questions: questionIds },
       { new: true, runValidators: true }
     ).populate("questions");
-    res.json({ message: "Exam updated successfully", exam: updatedExam });
+    if (!exam) return res.status(404).json({ error: "Exam not found" });
+    const log = new AuditLog({
+      action: "update",
+      model: "Exam",
+      documentId: exam._id,
+      changes: req.body,
+      userId: req.student.id,
+    });
+    await log.save();
+    res.json({ message: "Exam updated successfully", exam });
   } catch (error) {
-    res.status(500).json({ error: "Failed to update exam: " + error.message });
+    throw new Error("Failed to update exam: " + error.message);
   }
 });
 
-/**
- * @route DELETE /api/v1/exams/:id
- * @desc Soft delete an exam
- * @access Admin
- */
+// Soft Delete Exam
 router.delete("/:id", authenticateUser, authorizeAdmin, async (req, res) => {
   try {
-    const exam = await Exam.findById(req.params.id);
-    if (!exam || exam.isDeleted) {
-      return res.status(404).json({ error: "Exam not found" });
-    }
-    await Exam.findByIdAndUpdate(req.params.id, { isDeleted: true });
-    await Result.updateMany({ examId: req.params.id }, { isDeleted: true });
+    const exam = await Exam.findByIdAndUpdate(req.params.id, { isDeleted: true }, { new: true });
+    if (!exam) return res.status(404).json({ error: "Exam not found" });
+    const log = new AuditLog({
+      action: "delete",
+      model: "Exam",
+      documentId: exam._id,
+      userId: req.student.id,
+    });
+    await log.save();
     res.json({ message: "Exam deleted successfully" });
   } catch (error) {
-    res.status(500).json({ error: "Failed to delete exam: " + error.message });
+    throw new Error("Failed to delete exam: " + error.message);
   }
 });
 
