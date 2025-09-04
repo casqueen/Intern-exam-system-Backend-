@@ -47,7 +47,7 @@ router.get("/", async (req, res) => {
 // Get Single Exam
 router.get("/:id", async (req, res) => {
   try {
-    const exam = await Exam.findById(req.params.id).populate("questions");
+    const exam = await Exam.findById(req.params.id).populate("questionIds");
     if (!exam) {
       return res.status(404).json({ error: "Exam not found" });
     }

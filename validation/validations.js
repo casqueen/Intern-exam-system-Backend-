@@ -68,12 +68,7 @@ const createQuestionSchema = Joi.object({
     "number.base": "Score must be a number",
     "number.min": "Score must be at least 1",
     "any.required": "Score is required",
-  }),
-  allowedTime: Joi.number().min(10).required().messages({
-    "number.base": "Allowed time must be a number",
-    "number.min": "Allowed time must be at least 10 seconds",
-    "any.required": "Allowed time is required",
-  }),
+  })
 });
 
 module.exports = {

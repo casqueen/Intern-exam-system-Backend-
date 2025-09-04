@@ -50,6 +50,20 @@ router.get("/:id", authenticateUser, authorizeAdmin, async (req, res) => {
   }
 });
 
+// Get Multiple Questions by IDs
+router.post("/multiple", authenticateUser, authorizeAdmin, async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: "Please provide an array of question IDs." });
+    }
+    const questions = await Question.find({ _id: { $in: ids }, isDeleted: { $ne: true } });
+    res.json({ questions });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch questions: " + error.message });
+  }
+});
+
 // Update Question
 router.put("/:id", authenticateUser, authorizeAdmin, createQuestionValidation, async (req, res) => {
   try {

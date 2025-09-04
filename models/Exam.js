@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const ExamSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, index: true },
-    questions: [{ type: mongoose.Schema.Types.ObjectId, ref: "Question" }],
+    questionIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Question" }],
     isDeleted: { type: Boolean, default: false },
     isRandom: { type: Boolean, default: false },
   },
