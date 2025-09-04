@@ -76,7 +76,7 @@ router.get("/exam-results/:examId", authenticateUser, authorizeAdmin, async (req
       .populate("studentId", "name email")
       .populate("examId", "title questions")
       .lean();
-    if (!results.length) return res.status(404).json({ error: "No results found for this exam" });
+    if (!results.length) return res.status(404).json();
     const formattedResults = results.map((result) => ({
       studentId: result.studentId._id,
       name: result.studentId.name,
@@ -88,7 +88,7 @@ router.get("/exam-results/:examId", authenticateUser, authorizeAdmin, async (req
     }));
     res.json(formattedResults);
   } catch (error) {
-    throw new Error("Failed to fetch exam results: " + error.message);
+    throw new Error(error.message);
   }
 });
 

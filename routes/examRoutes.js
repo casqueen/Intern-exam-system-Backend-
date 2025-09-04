@@ -40,7 +40,7 @@ router.get("/", async (req, res) => {
       pagination: { page, limit, total },
     });
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch exams: " + error.message });
+    // res.status(500).json({ error: "Failed to fetch exams: " + error.message });
   }
 });
 
@@ -53,7 +53,7 @@ router.get("/:id", async (req, res) => {
     }
     res.json(exam);
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch exam: " + error.message });
+    // res.status(500).json({ error: "Failed to fetch exam: " + error.message });
   }
 });
 
