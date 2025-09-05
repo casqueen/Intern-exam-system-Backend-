@@ -91,31 +91,44 @@ router.get("/results/:resultId", async (req, res) => {
       accuracy: ((result.score / result.totalPossibleScore) * 100).toFixed(2) + "%",
       passed: result.passed,
     };
+    // safe question lookup in populated exam
+    const findQuestion = (qid) => {
+      try {
+        if (!exam || !exam.questionIds) return null;
+        return exam.questionIds.find((q) => q && q._id && q._id.toString() === qid.toString()) || null;
+      } catch (e) {
+        return null;
+      }
+    };
+
     res.json({
-      message: `🎉 Congratulations! You have ${result.passed ? "passed" : "failed"} the '${exam.title}' with a score of ${performance.accuracy} (${result.score} out of ${performance.totalPossibleScore} points).`,
+      message: `🎉 Congratulations! You have ${result.passed ? "passed" : "failed"} the '${exam ? exam.title : "exam"}' with a score of ${performance.accuracy} (${result.score} out of ${performance.totalPossibleScore} points).`,
       examResult: {
         resultId: result._id,
         student: {
-          id: result.studentId._id,
-          name: result.studentId.name,
-          email: result.studentId.email,
+          id: result.studentId?._id,
+          name: result.studentId?.name,
+          email: result.studentId?.email,
         },
         exam: {
-          id: exam._id,
-          title: exam.title,
+          id: exam?._id,
+          title: exam?.title,
           totalQuestions: performance.totalQuestions,
           correctAnswers: performance.correctAnswers,
           score: performance.accuracy,
           status: result.passed ? "Passed ✅" : "Failed ❌",
         },
-        answers: result.answers.map((answer) => ({
-          questionId: answer.questionId,
-          question: exam.questions.find((q) => q._id.toString() === answer.questionId.toString()).question,
-          selectedOptions: answer.selectedOptions,
-          correctAnswer: exam.questions.find((q) => q._id.toString() === answer.questionId.toString()).correctAnswers,
-          isCorrect: answer.isCorrect,
-          questionScore: answer.questionScore,
-        })),
+        answers: result.answers.map((answer) => {
+          const q = findQuestion(answer.questionId);
+          return {
+            questionId: answer.questionId,
+            question: q ? q.question : null,
+            selectedOptions: answer.selectedOptions,
+            correctAnswer: q ? q.correctAnswers : [],
+            isCorrect: answer.isCorrect,
+            questionScore: answer.questionScore,
+          };
+        }),
         performance,
         examDate: new Date(result.createdAt).toLocaleDateString(),
         generatedAt: new Date().toLocaleString(),

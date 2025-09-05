@@ -88,7 +88,7 @@ router.get("/exam-results/:examId", authenticateUser, authorizeAdmin, async (req
     }));
     res.json(formattedResults);
   } catch (error) {
-    throw new Error(error.message);
+    // throw new Error(error.message);
   }
 });
 
