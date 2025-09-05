@@ -38,9 +38,11 @@ router.post("/signup", signupStudentValidation, async (req, res) => {
   try {
     let { name, email } = req.body;
     const studentExists = await Student.findOne({ email });
-    
-    if (studentExists) 
-      return res.status(400).json({ error: "Email already in use." });     
+
+    // If student already exists, return the existing student so frontend can reuse the info
+    if (studentExists) {
+      return res.json({ message: "Student already exists", data: studentExists });
+    }
     const student = new Student({ name, email, role: "student" });
     await student.save();
     res.json({ message: "Student signed up successfully", data: student });
