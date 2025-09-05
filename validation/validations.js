@@ -36,9 +36,19 @@ const updateStudentSchema = Joi.object({
   email: Joi.string().email().optional(),
 });
 
+const signupStudentSchema = Joi.object({
+  name: Joi.string().optional(),
+  email: Joi.string().email().optional(),
+});
+
 const createExamSchema = Joi.object({
   title: Joi.string().required(),
-  questionIds: Joi.array().items(Joi.string().required()).min(1).required(),
+  questionIds: Joi.array().optional(),
+  isRandom: Joi.boolean().optional(),
+  // duration in minutes (optional)
+  duration: Joi.number().min(0).optional(),
+  // number of questions to pick when isRandom is true
+  questionCount: Joi.number().integer().min(0).optional(),
 });
 
 const createQuestionSchema = Joi.object({
@@ -65,7 +75,7 @@ const createQuestionSchema = Joi.object({
       "array.length": "Single choice questions must have exactly one correct answer",
     }),
   score: Joi.number().min(1).required().messages({
-    "number.base": "Score must be a number",
+    "number.base": "Score number",
     "number.min": "Score must be at least 1",
     "any.required": "Score is required",
   })
@@ -77,4 +87,5 @@ module.exports = {
   updateStudentValidation: validateRequest(updateStudentSchema),
   createExamValidation: validateRequest(createExamSchema),
   createQuestionValidation: validateRequest(createQuestionSchema),
+  signupStudentValidation: validateRequest(signupStudentSchema),
 };

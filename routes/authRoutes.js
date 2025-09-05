@@ -2,7 +2,7 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const Student = require("../models/Student");
-const { registerValidation, loginValidation } = require("../validation/validations");
+const { registerValidation, loginValidation, signupStudentValidation } = require("../validation/validations");
 
 const router = express.Router();
 
@@ -31,6 +31,22 @@ router.post("/login", loginValidation, async (req, res) => {
   if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
   const token = jwt.sign({ id: student._id, role: student.role }, process.env.JWT_SECRET, { expiresIn: "1d" });
   res.json({ token, student });
+});
+
+
+router.post("/signup", signupStudentValidation, async (req, res) => {
+  try {
+    let { name, email } = req.body;
+    const studentExists = await Student.findOne({ email });
+    
+    if (studentExists) 
+      return res.status(400).json({ error: "Email already in use." });     
+    const student = new Student({ name, email, role: "student" });
+    await student.save();
+    res.json({ message: "Student signed up successfully", data: student });
+  } catch (error) {
+    res.status(500).json({ error: error });
+  }
 });
 
 module.exports = router;
