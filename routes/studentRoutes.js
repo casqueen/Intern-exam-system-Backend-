@@ -16,14 +16,14 @@ router.post("/exams/:examId/submit", async (req, res) => {
       student = new Student({ name, email, role: "student" });
       await student.save();
     }
-    const exam = await Exam.findById(req.params.examId).populate("questions");
+  const exam = await Exam.findById(req.params.examId).populate("questionIds");
     if (!exam) return res.status(404).json({ error: "Exam not found" });
     const existingResult = await Result.findOne({ studentId: student._id, examId: req.params.examId });
     if (existingResult) return res.status(400).json({ error: "Exam already submitted" });
     let score = 0;
     let totalPossibleScore = 0;
     const formattedAnswers = answers.map((answer) => {
-      const question = exam.questions.find((q) => q._id.toString() === answer.questionId);
+      const question = exam.questionIds.find((q) => q._id.toString() === answer.questionId);
       if (!question) throw new Error(`Question ${answer.questionId} not found`);
       totalPossibleScore += question.score;
       let isCorrect = false;
@@ -32,7 +32,7 @@ router.post("/exams/:examId/submit", async (req, res) => {
       if (question.type === "single") {
         isCorrect = selectedSorted.length === 1 && selectedSorted[0] === correctSorted[0];
       } else {
-        isCorrect = selectedSorted.length === carectSorted.length && selectedSorted.every((v, i) => v === correctSorted[i]);
+        isCorrect = selectedSorted.length === correctSorted.length && selectedSorted.every((v, i) => v === correctSorted[i]);
       }
       if (isCorrect) score += question.score;
       return {
@@ -78,7 +78,7 @@ router.get("/results/:resultId", async (req, res) => {
       .populate("studentId", "name email")
       .populate({
         path: "examId",
-        populate: { path: "questions" },
+        populate: { path: "questionIds" },
       });
     if (!result) return res.status(404).json({ error: "Result not found" });
     const exam = result.examId;
