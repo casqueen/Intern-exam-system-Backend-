@@ -33,7 +33,7 @@ router.post("/login", loginValidation, async (req, res) => {
   res.json({ token, student });
 });
 
-
+// Signup Student (Public)
 router.post("/signup", signupStudentValidation, async (req, res) => {
   try {
     let { name, email } = req.body;
